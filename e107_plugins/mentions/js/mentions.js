@@ -42,7 +42,7 @@ jQuery(function ($) {
                 }
 
                 $.ajax({
-                    url: API_ENDPOINT + "?mq=" + query,
+                    url: API_ENDPOINT + "?mq=" + encodeURIComponent(query),
                     type: 'GET',
                     dataType: 'json',
 

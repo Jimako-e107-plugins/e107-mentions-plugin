@@ -5,5 +5,6 @@ if ( ! defined('e107_INIT')) {
 if ( ! e107::isInstalled('mentions') || ! USER) {
 	exit;
 }
+require_once __DIR__ . '/Mentions.php';
 require_once __DIR__ . '/MentionsAutoComplete.php';
-MentionsAutoComplete::query($_GET['mq']);
+MentionsAutoComplete::query(varset($_GET['mq']));

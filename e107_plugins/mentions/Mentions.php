@@ -14,8 +14,24 @@ class Mentions
 	 */
 	public function __construct()
 	{
-		$this->prefs = e107::getPlugPref('mentions');
+		$prefs = e107::getPlugPref('mentions');
+		$this->prefs = is_array($prefs) ? $prefs : [];
 		$this->parse = e107::getParser();
+	}
+
+	/**
+	 * Returns a single plugin preference value or the given default
+	 * when the pref is missing.
+	 *
+	 * @param string $key
+	 * @param mixed  $default
+	 *
+	 * @return mixed
+	 */
+	protected function pref($key, $default = null)
+	{
+		return isset($this->prefs[$key]) && $this->prefs[$key] !== ''
+			? $this->prefs[$key] : $default;
 	}
 
 	/**
@@ -31,7 +47,8 @@ class Mentions
 	{
 		$data = $this->getUserData($mention);
 
-		if ($data['user_name'] === $this->stripAtFrom($mention)) {
+		if ( ! empty($data['user_name'])
+			&& $data['user_name'] === $this->stripAtFrom($mention)) {
 			$userData =
 				['id' => $data['user_id'], 'name' => $data['user_name']];
 			$link = e107::getUrl()->create('user/profile/view', $userData);
@@ -50,7 +67,8 @@ class Mentions
 	 *  String prepended with '@' which the parsing logic captured.
 	 *
 	 * @return array
-	 *  User details from 'user' table - user_id, user_name, user_email
+	 *  User details from 'user' table - user_id, user_name, user_email;
+	 *  empty array when no matching user exists.
 	 */
 	protected function getUserData($mention)
 	{
@@ -58,7 +76,7 @@ class Mentions
 		$row = e107::getDb()->retrieve("user", "user_name, user_id, user_email",
 			"user_name = '" . $username . "' ");
 
-		return $row;
+		return is_array($row) ? $row : [];
 	}
 
 
@@ -72,12 +90,14 @@ class Mentions
 	 */
 	protected function stripAtFrom($mention)
 	{
-		return ltrim($mention, '@');
+		return ltrim((string) $mention, '@');
 	}
 
 
 	/**
-	 * Does Debug logging by writing a log file to the plugin directory
+	 * Does Debug logging. Disabled unless the MENTIONS_DEBUG constant is
+	 * defined; logs go to the e107 system log folder, never to the
+	 * web-accessible plugin directory.
 	 *
 	 * @param string|array $content
 	 *  The data to be logged - can be passed as string or array.
@@ -86,14 +106,17 @@ class Mentions
 	 */
 	protected function log($content, $logname = 'mentions')
 	{
-		$path = e_PLUGIN . 'mentions/' . $logname . '.txt';
+		if ( ! defined('MENTIONS_DEBUG') || ! MENTIONS_DEBUG) {
+			return;
+		}
 
 		if (is_array($content)) {
 			$content = var_export($content, true);
 		}
 
-		file_put_contents($path, $content . "\n", FILE_APPEND);
-		unset($path, $content);
+		$path = e_LOG . 'mentions_' . preg_replace('/[^\w.-]/', '', $logname) . '.log';
+
+		file_put_contents($path, date('c') . ' ' . $content . "\n", FILE_APPEND);
 	}
 
 

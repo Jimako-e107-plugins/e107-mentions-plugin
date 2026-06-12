@@ -27,8 +27,7 @@ class MentionsNotification extends Mentions
 	 */
 	public function __construct()
 	{
-		Mentions::__construct();
-	//	$this->mail = e107::getEmail();
+		parent::__construct();
 	}
 
 
@@ -107,23 +106,24 @@ class MentionsNotification extends Mentions
 	 */
 	private function perform()
 	{
-		if (USER && $this->prefs['mentions_active']
+		if (USER && ! empty($this->prefs['mentions_active'])
 			&& (strtolower($_SERVER['REQUEST_METHOD']) === 'post'
 				|| e_AJAX_REQUEST)) {
 
-			if ($this->prefs['notify_chatbox_mentions']) {
+			$contexts = (int) $this->pref('mentions_contexts', 1);
+
+			if ( ! empty($this->prefs['notify_chatbox_mentions'])) {
 				e107::getEvent()->register('user_chatbox_post_created',
 					['MentionsNotification', 'chatbox']);
 			}
 
-			if ($this->prefs['notify_comment_mentions']
-				&& ($this->prefs['mentions_contexts'] === 2
-					|| $this->prefs['mentions_contexts'] === 3)) {
+			if ( ! empty($this->prefs['notify_comment_mentions'])
+				&& ($contexts === 2 || $contexts === 3)) {
 				e107::getEvent()->register('user_comment_posted',
 					['MentionsNotification', 'comment']);
 			}
 
-			if ($this->prefs['notify_forum_mentions']) {
+			if ( ! empty($this->prefs['notify_forum_mentions'])) {
 
 				// forum 'thread' and 'reply' covered - for now
 				e107::getEvent()->register('user_forum_post_created',
@@ -142,13 +142,25 @@ class MentionsNotification extends Mentions
 	 * @return bool
 	 *  Returns false if no mention in 'cmessage'.
 	 */
-	public function chatbox($data)
+	public static function chatbox($data)
+	{
+		$self = new static();
+
+		return $self->handleChatbox($data);
+	}
+
+
+	/**
+	 * @see MentionsNotification::chatbox()
+	 *
+	 * @param array $data
+	 *
+	 * @return bool
+	 */
+	private function handleChatbox($data)
 	{
 		// set tag - chatbox
 		$this->setTag(LAN_MENTIONS_TAG_CHATBOX);
-
-		// Debug
-		// $this->log($data, 'chatbox-event-data');
 
 		// if no mentions abort
 		if ( ! $this->hasAtSign($data['cmessage'])) {
@@ -183,18 +195,30 @@ class MentionsNotification extends Mentions
 	 *  Returns false if no mention in 'comment_comment'.
 	 * @todo revisit to tidy up the sequence of routines
 	 */
-	public function comment($data)
+	public static function comment($data)
+	{
+		$self = new static();
+
+		return $self->handleComment($data);
+	}
+
+
+	/**
+	 * @see MentionsNotification::comment()
+	 *
+	 * @param array $data
+	 *
+	 * @return bool
+	 */
+	private function handleComment($data)
 	{
 		// set tag - comment
 		$this->setTag(LAN_MENTIONS_TAG_COMMENT);
 
-		// Debug
-		// $this->log($data, 'comments-event-data');
-
 		// if no '@' signs or if comment is blocked - abort
 		$hasAt = $this->hasAtSign($data['comment_comment']);
 
-		if ( ! $hasAt || $data['comment_blocked'] ) {
+		if ( ! $hasAt || ! empty($data['comment_blocked'])) {
 			return false;
 		}
 
@@ -230,13 +254,25 @@ class MentionsNotification extends Mentions
 	 *  Returns false if no mention in 'post_entry'.
 	 * @todo revisit to tidy up the sequence of routines
 	 */
-	public function forum($data)
+	public static function forum($data)
+	{
+		$self = new static();
+
+		return $self->handleForum($data);
+	}
+
+
+	/**
+	 * @see MentionsNotification::forum()
+	 *
+	 * @param array $data
+	 *
+	 * @return bool
+	 */
+	private function handleForum($data)
 	{
 		// set tag - forum
 		$this->setTag(LAN_MENTIONS_TAG_FORUM);
-
-		// Debug
-		// $this->log($data, 'forum-event-data');
 
 		// if no mentions abort
 		if ( ! $this->hasAtSign($data['post_entry'])) {
@@ -258,6 +294,11 @@ class MentionsNotification extends Mentions
 
 			// get more forum data
 			$forumInfo = $this->getRequisiteForumData($data['post_thread']);
+
+			if (empty($forumInfo['thread_name'])) {
+				return false;
+			}
+
 			$this->setEventData($forumInfo, true);
 
 			$title = $forumInfo['thread_name'];
@@ -360,30 +401,31 @@ class MentionsNotification extends Mentions
 		// filter mentions for duplicates and 'mentioner' themself
 		$uniqueMentions = $this->filterMentions($mentions);
 
-		// Debug
-		$this->log($uniqueMentions, 'unique-mentions');
+		$maxEmails = (int) $this->pref('max_emails', 10);
+		$sent = 0;
 
-		$maxEmails = $this->prefs['max_emails'];
+		foreach ($uniqueMentions as $mention) {
 
-		for ($i = 0; $i < $maxEmails; $i++ ) {
+			if ($sent >= $maxEmails) {
+				break;
+			}
 
 			// being paranoid - the 'mentioner' should NEVER get an email.
-			$mentionee = $this->stripAtFrom($uniqueMentions[$i]);
+			$mentionee = $this->stripAtFrom($mention);
 
 			if ($this->mentioner === $mentionee) {
 				continue;
 			}
 
 			// get 'mentionee' details - email, username, userid
-			$this->mentioneeData = $this->getUserData($uniqueMentions[$i]);
+			$this->mentioneeData = $this->getUserData($mention);
 
 			// send email
-			if (null !== $this->mentioneeData['user_email']
-				&& null !== $this->mentioneeData['user_name']) {
+			if ( ! empty($this->mentioneeData['user_email'])
+				&& ! empty($this->mentioneeData['user_name'])) {
 
 				$this->dispatchEmail();
-				continue;
-
+				$sent++;
 			}
 		}
 
@@ -398,7 +440,7 @@ class MentionsNotification extends Mentions
 	 */
 	private function dispatchEmail()
 	{
-				$mail = e107::getEmail();  
+		$mail = e107::getEmail();
 
 		$emailContent = [
 			'email_subject' =>  $this->emailSubject(),
@@ -406,7 +448,7 @@ class MentionsNotification extends Mentions
 			'email_body' =>  $this->emailBody(),
 			'template' => 'default',
 			'e107_header' => $this->mentioneeData['user_id'],
-			'extra_header' => 'X-e107-Plugin : Mentions-Plugin-v'
+			'extra_header' => 'X-e107-Plugin: mentions'
 		];
 
 		$userEmail = $this->mentioneeData['user_email'];
@@ -415,17 +457,11 @@ class MentionsNotification extends Mentions
 		// send email
 		$emailSent = $mail->sendEmail($userEmail, $userName, $emailContent);
 
-		// Debug
-		$this->log($emailContent, 'email-content-array-log');
-
 		if (true === $emailSent) {
-			$emailContent = null;
-			$mail = null;
-			//unset($emailContent, $mail);
-			return $emailSent;
+			return true;
 		}
-		// Debug
-		$this->log($emailSent, 'email-send-error-log');
+
+		$this->log($emailSent, 'email-send-error');
 
 		return false;
 	}
@@ -575,8 +611,8 @@ class MentionsNotification extends Mentions
 	 */
 	public function emailSubject()
 	{
-		$subjectLine = trim($this->prefs['email_subject_line']);
-		if (null !== $subjectLine && $subjectLine !== '') {
+		$subjectLine = trim((string) $this->pref('email_subject_line', ''));
+		if ($subjectLine !== '') {
 			return str_replace('{MENTIONER}', $this->mentioner, $subjectLine);
 		}
 
@@ -594,7 +630,7 @@ class MentionsNotification extends Mentions
 	 */
 	protected function solveCommentType($input)
 	{
-		if (ctype_digit($input)) {
+		if (ctype_digit((string) $input)) {
 
 			return $this->nameCommentType($input);
 		}
@@ -669,7 +705,12 @@ class MentionsNotification extends Mentions
 		switch ($this->tag) {
 
 			case LAN_MENTIONS_TAG_CHATBOX:
-				return SITEURLBASE . e_PLUGIN_ABS . 'chatbox_menu/chat.php';
+				if(e107::isInstalled('chatbox')) {
+					return SITEURLBASE . e_PLUGIN_ABS . 'chatbox/chat.php';
+				}
+				if(e107::isInstalled('chatbox_menu')) {
+					return SITEURLBASE . e_PLUGIN_ABS . 'chatbox_menu/chat.php';
+				}
 				break;
 
 			case LAN_MENTIONS_TAG_COMMENT: // news, downloads, polls, and other third party plugins
@@ -696,9 +737,9 @@ class MentionsNotification extends Mentions
 	private function getForumItemLink()
 	{
 		$data = [
-			'forum_sef' => $this->eventData['forum_sef'],
-			'thread_id' => $this->eventData['thread_id'],
-			'thread_sef' => $this->createSlug($this->eventData['thread_name'])
+			'forum_sef' => varset($this->eventData['forum_sef']),
+			'thread_id' => varset($this->eventData['thread_id']),
+			'thread_sef' => $this->createSlug(varset($this->eventData['thread_name'], ''))
 		];
 
 		$opt = $this->getLinkOptions('forum');
@@ -805,14 +846,14 @@ class MentionsNotification extends Mentions
 				break;
 
 			case 'downloads':
-				if ($coreUrlPref['download']) {
+				if ( ! empty($coreUrlPref['download'])) {
 					return [ 'mode' => 'full',
 					         'legacy' => false ];
 				}
 				break;
 
 			case 'forum':
-				if ($coreUrlPref['forum']) {
+				if ( ! empty($coreUrlPref['forum'])) {
 					return [
 						'mode' => 'full',
 						'query' => ['last' => 1],

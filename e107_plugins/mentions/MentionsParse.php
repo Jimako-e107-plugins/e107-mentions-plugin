@@ -83,7 +83,7 @@ class MentionsParse extends Mentions
 	 */
 	protected function chosenContexts()
 	{
-		$contextPref = $this->prefs['mentions_contexts'];
+		$contextPref = (int) $this->pref('mentions_contexts', 1);
 
 		switch ($contextPref) {
 			case 1:

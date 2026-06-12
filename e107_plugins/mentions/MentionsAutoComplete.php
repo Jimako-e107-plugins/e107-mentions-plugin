@@ -15,7 +15,7 @@ class MentionsAutoComplete extends Mentions
 	 */
 	public function __construct()
 	{
-		Mentions::__construct();
+		parent::__construct();
 		$this->db = e107::getDb();
 		$this->ajax = e107::getAjax();
 	}
@@ -51,19 +51,26 @@ class MentionsAutoComplete extends Mentions
 			$tp = $this->parse;
 			$ajax = $this->ajax;
 
-			$mq = $tp->filter($queryParam);
-			$where = "user_name LIKE '" . $mq . "%' ";
+			$maxChar = (int) $this->pref('atwho_max_char', 15);
+			$limit = (int) $this->pref('atwho_item_limit', 5);
+
+			// cap length, escape for SQL and neutralize LIKE wildcards
+			$mq = mb_substr((string) $queryParam, 0, $maxChar);
+			$mq = $tp->toDB($mq);
+			$mq = addcslashes($mq, '%_');
+
+			$where = "user_name LIKE '" . $mq . "%' AND user_ban = 0 ";
 
 			$result =
 				$db->select('user', 'user_name, user_image, user_login',
-				$where . ' ORDER BY user_name');
+				$where . ' ORDER BY user_name LIMIT ' . $limit);
 
 			if ($result) {
 
 				$data = [];
 				while ($row = $db->fetch()) {
 
-					if ($this->prefs['atwho_avatar']) {
+					if ( ! empty($this->prefs['atwho_avatar'])) {
 						$data[] = [
 							'image'    => $this->getAvatar($row['user_image']),
 							'username' => $row['user_name'],
@@ -116,9 +123,9 @@ class MentionsAutoComplete extends Mentions
 	public function loadLibs()
 	{
 
-		if ($this->prefs['mentions_active'] && USER_AREA && USER) {
+		if ( ! empty($this->prefs['mentions_active']) && USER_AREA && USER) {
 
-			if ($this->prefs['use_global_path']) {
+			if ( ! empty($this->prefs['use_global_path'])) {
 
 				$this->loadLibsUsingGlobalPath();
 			} else {
@@ -170,9 +177,10 @@ class MentionsAutoComplete extends Mentions
 		$jsSettings = [
 			'api_endpoint' => $apiPath,
 			'suggestions'  => [
-				'minChar'    => $this->prefs['atwho_min_char'],
-				'maxChar'    => $this->prefs['atwho_max_char'],
-				'entryLimit' => $this->prefs['atwho_item_limit']
+				'minChar'    => (int) $this->pref('atwho_min_char', 2),
+				'maxChar'    => (int) $this->pref('atwho_max_char', 15),
+				'entryLimit' => (int) $this->pref('atwho_item_limit', 5),
+				'hiFirst'    => (bool) $this->pref('atwho_highlight_first', 1)
 			],
 			'inputFields' => ['activeOnes' => $this->obtainFields()]
 		];
@@ -191,7 +199,7 @@ class MentionsAutoComplete extends Mentions
 	 */
 	private function obtainFields()
 	{
-		if ($this->prefs['mentions_contexts'] === 1) {
+		if ((int) $this->pref('mentions_contexts', 1) === 1) {
 			return '#cmessage, #forum-quickreply-text, #post';
 		}
 		
@@ -209,9 +217,9 @@ class MentionsAutoComplete extends Mentions
 	 */
 	private function getAvatar($userImage)
 	{
-		$measure = $this->prefs['avatar_size'];
+		$measure = (int) $this->pref('avatar_size', 32);
 
-		$shape = $this->prefs['avatar_border'];
+		$shape = $this->pref('avatar_border', 'circle');
 
 		return $this->parse->toAvatar(
 

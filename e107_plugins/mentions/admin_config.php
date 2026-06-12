@@ -7,6 +7,40 @@ if ( ! getperms('P') || ! e107::isInstalled('mentions')) {
 
 e107::lan('mentions', 'admin', true);
 
+// These constants are used as default values of the $prefs property of
+// mentions_ui below. Property defaults are evaluated when the class is
+// instantiated - before init() runs - so they must be defined at file
+// level (on PHP 8 an undefined constant is a fatal error).
+define('MENTIONS_ADMIN_ACTIVE_TITLE', '<p>' . LAN_MENTIONS_PREF_LBL_ACTIVE
+	. '</p><small>' . LAN_MENTIONS_PREF_LBL_HINT_ACTIVATION . '</small>');
+define('MENTIONS_ADMIN_CONTEXT_TITLE', '<p>' . LAN_MENTIONS_PREF_LBL_CONTEXTS
+	. '</p><small>' . LAN_MENTIONS_PREF_LBL_HINT_CONTEXT . '</small>');
+define('MENTIONS_ADMIN_JSPATH_TITLE', '<p>' . LAN_MENTIONS_PREF_LBL_GLOBAL_LIBS . '</p><small>'
+	. LAN_MENTIONS_PREF_LBL_HINT_GLOBAL_LIBS_1
+	. '<kbd><a href="https://github.com/ichord/Caret.js" target="_blank">Caret.js</a></kbd>'
+	. LAN_MENTIONS_PREF_LBL_HINT_GLOBAL_LIBS_2
+	. '<kbd><a href="https://github.com/ichord/At.js" target="_blank">At.js</a></kbd>'
+	. LAN_MENTIONS_PREF_LBL_HINT_GLOBAL_LIBS_3 . '</small>');
+define('MENTIONS_ADMIN_JSPATH_HINT', LAN_MENTIONS_PREF_LBL_HINT_GLOBAL_LIBS_1
+	. '<kbd><a href="https://github.com/ichord/Caret.js" target="_blank">Caret.js</a></kbd>'
+	. LAN_MENTIONS_PREF_LBL_HINT_GLOBAL_LIBS_2
+	. '<kbd><a href="https://github.com/ichord/At.js" target="_blank">At.js</a></kbd>'
+	. LAN_MENTIONS_PREF_LBL_HINT_GLOBAL_LIBS_3);
+define('MENTIONS_ADMIN_MINCHAR_TITLE', '<p>' . LAN_MENTIONS_PREF_LBL_ATWHO_MINCHARS_1
+	. '<kbd>@</kbd>' . LAN_MENTIONS_PREF_LBL_ATWHO_MINCHARS_2
+	. '</p><kbd>' . LAN_MENTIONS_PREF_LBL_ATWHO_MINCHARS_3 . '</kbd>');
+define('MENTIONS_ADMIN_MAXCHAR_TITLE', '<p>' . LAN_MENTIONS_PREF_LBL_ATWHO_MAXCHARS_1
+	. '<kbd>@</kbd>' . LAN_MENTIONS_PREF_LBL_ATWHO_MAXCHARS_2
+	. '</p><kbd>' . LAN_MENTIONS_PREF_LBL_ATWHO_MAXCHARS_3 . '</kbd>');
+define('MENTIONS_ADMIN_SUBJECTLINE', '<p>' . LAN_MENTIONS_PREF_LBL_EMAIL_SUBJECT
+	. '</p><small>' . LAN_MENTIONS_PREF_LBL_HINT_EMAIL_SUBJECT_1
+	. '<kbd>{MENTIONER}</kbd>' . LAN_MENTIONS_PREF_LBL_HINT_EMAIL_SUBJECT_2 . '</small>');
+define('MENTIONS_ADMIN_ITEMLIMIT_TITLE', '<p>' . LAN_MENTIONS_PREF_LBL_ATWHO_LIMIT_1
+	. '</p><kbd>' . LAN_MENTIONS_PREF_LBL_ATWHO_LIMIT_2 . '</kbd>');
+define('MENTIONS_ADMIN_MAXEMAILS_TITLE', '<p>' . LAN_MENTIONS_PREF_LBL_MAX_EMAILS . '</p><small>'
+	. LAN_MENTIONS_PREF_LBL_HINT_MAX_EMAILS_1 . '<br><br>'
+	. LAN_MENTIONS_PREF_LBL_HINT_MAX_EMAILS_2 . '</small>');
+
 
 class mentions_adminArea extends e_admin_dispatcher
 {
@@ -190,43 +224,8 @@ class mentions_ui extends e_admin_ui
 		$this->prefs['max_emails']['writeParms'] = $this->maxNotificationEmails;
 		$this->prefs['avatar_size']['writeParms'] = $this->avatarSizesList;
 		$this->prefs['avatar_border']['writeParms'] = $this->avatarBorderList;
-
-		$this->concatDefineConstants();
 	}
 
-
-	private function concatDefineConstants()
-	{
-		define('MENTIONS_ADMIN_ACTIVE_TITLE', '<p>' . LAN_MENTIONS_PREF_LBL_ACTIVE
-			. '</p><small>' . LAN_MENTIONS_PREF_LBL_HINT_ACTIVATION . '</small>');
-		define('MENTIONS_ADMIN_CONTEXT_TITLE', '<p>' . LAN_MENTIONS_PREF_LBL_CONTEXTS
-			. '</p><small>' . LAN_MENTIONS_PREF_LBL_HINT_CONTEXT . '</small>');
-		define('MENTIONS_ADMIN_JSPATH_TITLE', '<p>' . LAN_MENTIONS_PREF_LBL_GLOBAL_LIBS . '</p><small>'
-			. LAN_MENTIONS_PREF_LBL_HINT_GLOBAL_LIBS_1
-			. '<kbd><a href="https://github.com/ichord/Caret.js" target="_blank">Caret.js</a></kbd>'
-			. LAN_MENTIONS_PREF_LBL_HINT_GLOBAL_LIBS_2
-			. '<kbd><a href="https://github.com/ichord/At.js" target="_blank">At.js</a></kbd>'
-			. LAN_MENTIONS_PREF_LBL_HINT_GLOBAL_LIBS_3 . '</small>');
-		define('MENTIONS_ADMIN_JSPATH_HINT', LAN_MENTIONS_PREF_LBL_HINT_GLOBAL_LIBS_1
-			. '<kbd><a href="https://github.com/ichord/Caret.js" target="_blank">Caret.js</a></kbd>'
-			. LAN_MENTIONS_PREF_LBL_HINT_GLOBAL_LIBS_2
-			. '<kbd><a href="https://github.com/ichord/At.js" target="_blank">At.js</a></kbd>'
-			. LAN_MENTIONS_PREF_LBL_HINT_GLOBAL_LIBS_3);
-		define('MENTIONS_ADMIN_MINCHAR_TITLE', '<p>' . LAN_MENTIONS_PREF_LBL_ATWHO_MINCHARS_1
-			. '<kbd>@</kbd>' . LAN_MENTIONS_PREF_LBL_ATWHO_MINCHARS_2
-			. '</p><kbd>' . LAN_MENTIONS_PREF_LBL_ATWHO_MINCHARS_3 . '</kbd>');
-		define('MENTIONS_ADMIN_MAXCHAR_TITLE', '<p>' . LAN_MENTIONS_PREF_LBL_ATWHO_MAXCHARS_1
-			. '<kbd>@</kbd>' . LAN_MENTIONS_PREF_LBL_ATWHO_MAXCHARS_2
-			. '</p><kbd>' . LAN_MENTIONS_PREF_LBL_ATWHO_MAXCHARS_3 . '</kbd>');
-		define('MENTIONS_ADMIN_SUBJECTLINE', '<p>' . LAN_MENTIONS_PREF_LBL_EMAIL_SUBJECT
-			. '</p><small>' . LAN_MENTIONS_PREF_LBL_HINT_EMAIL_SUBJECT_1
-			. '<kbd>{MENTIONER}</kbd>' . LAN_MENTIONS_PREF_LBL_HINT_EMAIL_SUBJECT_2 . '</small>');
-		define('MENTIONS_ADMIN_ITEMLIMIT_TITLE', '<p>' . LAN_MENTIONS_PREF_LBL_ATWHO_LIMIT_1
-			. '</p><kbd>' . LAN_MENTIONS_PREF_LBL_ATWHO_LIMIT_2 . '</kbd>');
-		define('MENTIONS_ADMIN_MAXEMAILS_TITLE', '<p>' . LAN_MENTIONS_PREF_LBL_MAX_EMAILS . '</p><small>'
-			. LAN_MENTIONS_PREF_LBL_HINT_MAX_EMAILS_1 . '<br><br>'
-			. LAN_MENTIONS_PREF_LBL_HINT_MAX_EMAILS_2 . '</small>');
-	}
 
 	public function renderHelp()
 	{
